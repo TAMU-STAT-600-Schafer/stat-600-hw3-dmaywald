@@ -107,10 +107,15 @@ Ptest <- expXtestB/rowSums(expXtestB)
 Ytest <- vector(mode = "double", length = ntest)
 
 for (i in 1:ntrain) {
-  Ytrain[i] <- sample(x = 0:(K-1), size = 1, prob = Ptrain[i,])
+  # Ytrain[i] <- sample(x = 0:(K-1), size = 1, prob = Ptrain[i,])
+  Ytrain[i] <- which.max(Ptrain[i,])
   
 }
 
 for (i in 1:ntest) {
-  Ytest[i] <- sample(x = 0:(K-1), size = 1, prob = Ptest[i,])
+  # Ytest[i] <- sample(x = 0:(K-1), size = 1, prob = Ptest[i,])
+  Ytest[i] <- which.max(Ptest[i,])
 }
+
+out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_star)
+out2 <- LRMultiClass2(Xtrain, Ytrain, Xtest, Ytest)
