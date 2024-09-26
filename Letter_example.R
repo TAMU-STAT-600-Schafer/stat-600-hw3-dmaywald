@@ -28,6 +28,11 @@ plot(out$error_train, type = 'o')
 plot(out$error_test, type = 'o')
 
 # Feel free to modify the code above for different lambda/eta/numIter values to see how it affects the convergence as well as train/test errors
+out <- LRMultiClass(X, Y, Xt, Yt, eta = .8, lambda = 2)
+
+plot(out$objective, type = 'o')
+plot(out$error_train, type = 'o')
+plot(out$error_test, type = 'o')
 
 # [ToDo] Use microbenchmark to time your code with lambda=1 and 50 iterations. To save time, only apply microbenchmark 5 times.
 
