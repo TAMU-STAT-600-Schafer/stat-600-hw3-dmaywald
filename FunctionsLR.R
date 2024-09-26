@@ -62,6 +62,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
     if (!is.matrix(beta_init)) {
       stop("Supplied argument beta_init is not a matrix!")
     }
+    
     K <- ncol(beta_init)
     if (length(unique(y)) != K) {
       warning("Number of unique classifications found in y does not match the column dimension of supplied beta_init")
@@ -87,7 +88,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
   p <- ncol(X) # dimension of training data
   
   # A lot of extraneous calculations. Needs better implementation
-  expXB <- exp(X %*% beta_init)
+  expXB <- exp(crossprod(t(X), beta_init))
   Pk <- expXB / rowSums(expXB)
   logPk <- log(Pk)
   
@@ -100,8 +101,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
   
   # initialize objective vector with repeated initial objective function evaluation
   # note that the frobenius norm of beta is equivalent to the double sum
-  objective <- rep(-1 * temp + (lambda / 2) * norm(beta_init, "F") ^ 2, numIter +
-                     1)
+  objective <- rep(-1 * temp + (lambda / 2) * norm(beta_init, "F") ^ 2, numIter + 1)
   
   
   
@@ -132,7 +132,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
   # would it be faster to apply which.max to rows of expXB
   # or would it be faster to for loop?
   # initialize error_test as repeated initial error
-  XtestBeta <- Xt %*% beta_init
+  XtestBeta <- crossprod(t(Xt), beta_init)
   testAcc <- 0
   for (n in 1:ntest) {
     if (which.max(XtestBeta[n, ]) == yt[n]) {
@@ -174,13 +174,13 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
     # recalculate probabilities and objective function,
     # as well as test error and training error
     
-    expXB <- exp(X %*% beta_mat)
+    expXB <- exp(crossprod(t(X), beta_mat))
     Pk <- expXB / rowSums(expXB)
     logPk <- log(Pk)
     
     # Calculate double sum found in the objective function
     temp <- 0
-    for (i in 0:(K - 1)) {
+    for (i in 1:K) {
       temp <- temp + sum(logPk[y == i, i])
     }
     
@@ -205,7 +205,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
     # where pred is row wise maximum of Xt %*% beta_init
     # would it be faster to apply which.max to rows of expXB
     # or would it be faster to for loop?
-    XtestBeta <- Xt %*% beta_mat
+    XtestBeta <- crossprod(t(Xt),  beta_mat)
     testAcc <- 0
     for (n in 1:ntest) {
       if (which.max(XtestBeta[n, ]) == yt[n]) {
@@ -214,7 +214,6 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
     }
     error_test[j] <- 1 - testAcc / ntest
   }
-  
   
   # Apply was slower
   # error_test[j] <- 1 - mean(apply(XtestBeta, 1, function(x) which.max(x)) == yt)
@@ -301,7 +300,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   p <- ncol(X) # dimension of training data
   
   # A lot of extraneous calculations. Needs better implementation
-  expXB <- exp(X %*% beta_init)
+  expXB <- exp(crossprod(t(X), beta_init))
   Pk <- expXB / rowSums(expXB)
   logPk <- log(Pk)
   
@@ -314,8 +313,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   
   # initialize objective vector with repeated initial objective function evaluation
   # note that the frobenius norm of beta is equivalent to the double sum
-  objective <- rep(-1 * temp + (lambda / 2) * norm(beta_init, "F") ^ 2, numIter +
-                     1)
+  objective <- rep(-1 * temp + (lambda / 2) * norm(beta_init, "F") ^ 2, numIter + 1)
   
   
   
@@ -346,7 +344,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   # would it be faster to apply which.max to rows of expXB
   # or would it be faster to for loop?
   # initialize error_test as repeated initial error
-  XtestBeta <- Xt %*% beta_init
+  XtestBeta <- crossprod(t(Xt), beta_init)
   testAcc <- 0
   for (n in 1:ntest) {
     if (which.max(XtestBeta[n, ]) == yt[n]) {
@@ -388,13 +386,13 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
     # recalculate probabilities and objective function,
     # as well as test error and training error
     
-    expXB <- exp(X %*% beta_mat)
+    expXB <- exp(crossprod(t(X), beta_mat))
     Pk <- expXB / rowSums(expXB)
     logPk <- log(Pk)
     
     # Calculate double sum found in the objective function
     temp <- 0
-    for (i in 0:(K - 1)) {
+    for (i in 1:K) {
       temp <- temp + sum(logPk[y == i, i])
     }
     
@@ -419,7 +417,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
     # where pred is row wise maximum of Xt %*% beta_init
     # would it be faster to apply which.max to rows of expXB
     # or would it be faster to for loop?
-    XtestBeta <- Xt %*% beta_mat
+    XtestBeta <- crossprod(t(Xt),  beta_mat)
     testAcc <- 0
     for (n in 1:ntest) {
       if (which.max(XtestBeta[n, ]) == yt[n]) {
