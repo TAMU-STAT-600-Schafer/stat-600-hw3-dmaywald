@@ -24,30 +24,39 @@ frob_norm <- function(X) {
       temp = temp + X[i, j] ^ 2
     }
   }
-  return(as.numeric(sqrt(temp)))
+  return(as.numeric(temp))
 }
 
 frob_norm_2 <- function(X) {
-  sqrt(sum(diag(crossprod(X, X))))
+  sum(diag(crossprod(X, X)))
 }
 
+frob_norm_3 <- function(X){
+  return(sum(X^2))
+}
 
-X_nrow = 2000
-X_ncol = 100
+# This is the dimension of beta matrix in LRMultiClass function for letter data
+X_nrow = 17
+X_ncol = 26
+
 
 X <- matrix(rnorm(n = X_nrow * X_ncol, mean = 0,sd = 10), nrow = X_nrow)
 
 
 # Make sure the functions return the same value
 test_that("Test Equality of Frobenius Norm Function", {
-  expect_equal(frob_norm(X), norm(X, "F"))
-  expect_equal(frob_norm_2(X), norm(X, "F"))
+  expect_equal(frob_norm(X), norm(X, "F")^2)
+  expect_equal(frob_norm_2(X), norm(X, "F")^2)
+  expect_equal(frob_norm_3(X), norm(X, "F")^2)
 })
 
 
 # See which function is faster
 
-res <- microbenchmark(frob_norm(X), frob_norm_2(X), norm(X, "F")) # norm(X, "F") seems to be the fastest.
+res <- microbenchmark(frob_norm(X),
+                      frob_norm_2(X),
+                      frob_norm_3(X),
+                      norm(X, "F")) # norm(X, "F") seems to be the fastest.
 
 
 
@@ -294,3 +303,47 @@ test_that("Expect errors/warnings in mismatched dimensions",
             expect_warning(LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init[,-1])) 
           })
 
+####################### Check numIter input ####################################
+
+p = 20
+K = 30
+ntrain = 2000
+ntest = 500
+
+
+# Generate Data
+beta_star = matrix(sample(-10:10, size = (p + 1) * (K), replace = T), nrow = p + 1)
+Xtrain <- cbind(rep(1, ntrain), matrix(rnorm(ntrain * p), nrow = ntrain))
+Xtest <- cbind(rep(1, ntest), matrix(rnorm(ntest * p), nrow = ntest))
+
+# Generate probabilities
+expXtrainB <- exp(Xtrain %*% beta_star + rnorm(ntrain, mean = 0, sd = 1))
+Ptrain <- expXtrainB / rowSums(expXtrainB)
+
+expXtestB <- exp(Xtest %*% beta_star + rnorm(ntest, mean = 0, sd = 1)) 
+Ptest <- expXtestB / rowSums(expXtestB)
+
+# Generate samples of Y with probabilities
+Ytrain <- vector(mode = "double", length = ntrain)
+Ytest <- vector(mode = "double", length = ntest)
+
+for (i in 1:ntrain) {
+  Ytrain[i] <- sample(x = 0:(K - 1),
+                      size = 1,
+                      prob = Ptrain[i, ])
+  # Ytrain[i] <- which.max(Ptrain[i,])
+  
+}
+
+for (i in 1:ntest) {
+  Ytest[i] <- sample(x = 0:(K - 1),
+                     size = 1,
+                     prob = Ptest[i, ])
+  # Ytest[i] <- which.max(Ptest[i,])
+}
+
+# Does sd of random initialization matter?
+beta_init = matrix(rnorm((p + 1) * K, mean = 0, sd = 1), nrow = p + 1) 
+out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init, numIter = 1)
+out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init, numIter = 0)
+out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, numIter = 0)
