@@ -124,7 +124,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
   error_train <- rep(1 - trainAcc / ntrain, numIter + 1)
   
   # Apply was slower
-  # error_train <- rep(1 - mean(apply(expXB, 1, function(x) which.max(x)) == y), numIter+1)
+  # error_train <- rep(1 - mean(apply(expXB, 1, function(x) which.max(x))-1 == y), numIter+1)
   
   
   # Get testing accuracy by calculating mean of indicator function I(pred == yt)
@@ -143,7 +143,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
   error_test <- rep(1 - testAcc / ntest, numIter + 1)
   
   # Apply was slower
-  # error_test <- rep(1 - mean(apply(XtestBeta, 1, function(x) which.max(x)) == yt), numIter+1)
+  # error_test <- rep(1 - mean(apply(XtestBeta, 1, function(x) which.max(x))-1 == yt), numIter+1)
   
   # rename beta_init to beta_mat (the output beta)
   # I didn't like using the name "beta" since there's a function in base R called beta
@@ -199,7 +199,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
     error_train[j] <- 1 - trainAcc / ntrain
     
     # Apply was slower
-    # error_train[j] <- 1 - mean(apply(expXB, 1, function(x) which.max(x)) == y)
+    # error_train[j] <- 1 - mean(apply(expXB, 1, function(x) which.max(x))-1 == y)
     
     # Get testing accuracy by calculating mean of indicator function I(pred == yt)
     # where pred is row wise maximum of Xt %*% beta_init
@@ -216,7 +216,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
   }
   
   # Apply was slower
-  # error_test[j] <- 1 - mean(apply(XtestBeta, 1, function(x) which.max(x)) == yt)
+  # error_test[j] <- 1 - mean(apply(XtestBeta, 1, function(x) which.max(x))-1 == yt)
   
   ## Return output
   ##########################################################################
@@ -289,25 +289,20 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   }
   
   
-  # re-classify y so that we have it align with indeces of beta
-  if (min(y) == 0) {
-    y = y + 1
-    yt = yt + 1
-  }
   
   ## Calculate corresponding pk, objective value f(beta_init), training error and testing error given the starting point beta_init
   ##########################################################################
   p <- ncol(X) # dimension of training data
   
-  # A lot of extraneous calculations. Needs better implementation
+  # Need to calculate all of Pk in each iteration. This is for the initial step
   expXB <- exp(crossprod(t(X), beta_init))
   Pk <- expXB / rowSums(expXB)
-  logPk <- log(Pk)
+  # logPk <- log(Pk)
   
   # Calculate double sum found in the objective function
   temp <- 0
   for (i in 1:K) {
-    temp <- temp + sum(logPk[y == i, i])
+    temp <- temp + sum(log(Pk[y == (i-1), i]))
   }
   
   
@@ -329,14 +324,14 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   # initialize error_train as repeated initial error
   trainAcc <- 0
   for (n in 1:ntrain) {
-    if (which.max(Pk[n, ]) == y[n]) {
+    if (which.max(Pk[n, ])-1 == y[n]) {
       trainAcc <- trainAcc + 1
     }
   }
   error_train <- rep(1 - trainAcc / ntrain, numIter + 1)
   
   # Apply was slower
-  # error_train <- rep(1 - mean(apply(expXB, 1, function(x) which.max(x)) == y), numIter+1)
+  # error_train <- rep(1 - mean(apply(expXB, 1, function(x) which.max(x))-1 == y), numIter+1)
   
   
   # Get testing accuracy by calculating mean of indicator function I(pred == yt)
@@ -347,7 +342,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   XtestBeta <- crossprod(t(Xt), beta_init)
   testAcc <- 0
   for (n in 1:ntest) {
-    if (which.max(XtestBeta[n, ]) == yt[n]) {
+    if (which.max(XtestBeta[n, ])-1 == yt[n]) {
       testAcc <- testAcc + 1
     }
   }
@@ -355,7 +350,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   error_test <- rep(1 - testAcc / ntest, numIter + 1)
   
   # Apply was slower
-  # error_test <- rep(1 - mean(apply(XtestBeta, 1, function(x) which.max(x)) == yt), numIter+1)
+  # error_test <- rep(1 - mean(apply(XtestBeta, 1, function(x) which.max(x))-1 == yt), numIter+1)
   
   # rename beta_init to beta_mat (the output beta)
   # I didn't like using the name "beta" since there's a function in base R called beta
@@ -376,7 +371,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
       beta_mat[, k] = beta_mat[, k] -
         # this follows formula at bottom of page 1 in README.pdf
         eta * solve(crossprod(X, (Pk[, k] * (1 - Pk[, k]) * X)) + diag(lambda, p),
-                    crossprod(X, Pk[, k] - (y == k)) + lambda * beta_mat[, k])
+                    crossprod(X, Pk[, k] - (y == (k-1))) + lambda * beta_mat[, k])
       
       
       # eta*solve(t(X) %*% ((Pk[,k]*(1-Pk[,k]))*X) + diag(lambda, p),
@@ -388,12 +383,12 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
     
     expXB <- exp(crossprod(t(X), beta_mat))
     Pk <- expXB / rowSums(expXB)
-    logPk <- log(Pk)
+    # logPk <- log(Pk)
     
     # Calculate double sum found in the objective function
     temp <- 0
     for (i in 1:K) {
-      temp <- temp + sum(logPk[y == i, i])
+      temp <- temp + sum(log(Pk[y == (i-1), i]))
     }
     
     objective[j] <- -1 * temp + (lambda / 2) * norm(beta_mat, "F") ^ 2
@@ -404,7 +399,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
     # or would it be faster to for loop?
     trainAcc <- 0
     for (n in 1:ntrain) {
-      if (which.max(Pk[n, ]) == y[n]) {
+      if (which.max(Pk[n, ])-1 == y[n]) {
         trainAcc <- trainAcc + 1
       }
     }
@@ -420,7 +415,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
     XtestBeta <- crossprod(t(Xt),  beta_mat)
     testAcc <- 0
     for (n in 1:ntest) {
-      if (which.max(XtestBeta[n, ]) == yt[n]) {
+      if (which.max(XtestBeta[n, ])-1 == yt[n]) {
         testAcc <- testAcc + 1
       }
     }
@@ -428,7 +423,7 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   }
   
   # Apply was slower
-  # error_test[j] <- 1 - mean(apply(XtestBeta, 1, function(x) which.max(x)) == yt)
+  # error_test[j] <- 1 - mean(apply(XtestBeta, 1, function(x) which.max(x))-1 == yt)
   
   ## Return output
   ##########################################################################
@@ -436,5 +431,5 @@ LRMultiClass2 <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, bet
   # error_train - (numIter + 1) length vector of training error % at each iteration (+ starting value)
   # error_test - (numIter + 1) length vector of testing error % at each iteration (+ starting value)
   # objective - (numIter + 1) length vector of objective values of the function that we are minimizing at each iteration (+ starting value)
-  return(list(beta = beta_mat, error_train = error_train, error_test = error_test, objective =  objective))
+  return(list(beta = beta_mat, error_train = 100*error_train, error_test = 100*error_test, objective =  objective))
 }

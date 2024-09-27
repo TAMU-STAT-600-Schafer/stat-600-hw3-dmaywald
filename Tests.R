@@ -72,19 +72,25 @@ Xt <- cbind(rep(1, nrow(Xt)), Xt)
 # Source the LR function
 source("FunctionsLR.R")
 
-out <- LRMultiClass2(X, Y, Xt, Yt, eta = .1, lambda = 1)
+out1 <- LRMultiClass(X, Y, Xt, Yt, eta = .1, lambda = 1)
+out2 <- LRMultiClass2(X, Y, Xt, Yt, eta = .1, lambda = 1)
 
 # The code below will draw pictures of objective function, as well as train/test error over the iterations
-plot(out$objective, type = 'o')
-plot(out$error_train, type = 'o')
-plot(out$error_test, type = 'o')
+plot(out1$objective, type = 'o')
+plot(out1$error_train, type = 'o')
+plot(out1$error_test, type = 'o')
+
+
+Rprof(gc.profiling = TRUE)
+invisible(LRMultiClass(X, Y, Xt, Yt))
+Rprof(NULL)
+summaryRprof()$by.total
 
 
 Rprof(gc.profiling = TRUE)
 invisible(LRMultiClass2(X, Y, Xt, Yt))
 Rprof(NULL)
 summaryRprof()$by.total
-
 
 
 ######################## Try my own data #######################################
@@ -218,9 +224,73 @@ for (p in ps) {
       # Ytest[i] <- which.max(Ptest[i,])
     }
     
-    out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest)
+    out <- LRMultiClass2(Xtrain, Ytrain, Xtest, Ytest)
     # plot(out$objective, type = 'o', main = paste("p = ", p, ", K = ", K))
-    plot(out$error_train, type = 'o', main = paste("p = ", p, ", K = ", K))
-    # plot(out$error_test, type = 'o', main = paste("p = ", p, ", K = ", K))
+    # plot(out$error_train, type = 'o', main = paste("p = ", p, ", K = ", K))
+    plot(out$error_test, type = 'o', main = paste("p = ", p, ", K = ", K))
   }
 }
+
+
+################## Check for mismatched input dimensions ###################
+
+p = 20
+K = 30
+ntrain = 2000
+ntest = 500
+
+
+# Generate Data
+beta_star = matrix(sample(-10:10, size = (p + 1) * (K), replace = T), nrow = p + 1)
+Xtrain <- cbind(rep(1, ntrain), matrix(rnorm(ntrain * p), nrow = ntrain))
+Xtest <- cbind(rep(1, ntest), matrix(rnorm(ntest * p), nrow = ntest))
+
+# Generate probabilities
+expXtrainB <- exp(Xtrain %*% beta_star + rnorm(ntrain, mean = 0, sd = 1))
+Ptrain <- expXtrainB / rowSums(expXtrainB)
+
+expXtestB <- exp(Xtest %*% beta_star + rnorm(ntest, mean = 0, sd = 1)) 
+Ptest <- expXtestB / rowSums(expXtestB)
+
+# Generate samples of Y with probabilities
+Ytrain <- vector(mode = "double", length = ntrain)
+Ytest <- vector(mode = "double", length = ntest)
+
+for (i in 1:ntrain) {
+  Ytrain[i] <- sample(x = 0:(K - 1),
+                      size = 1,
+                      prob = Ptrain[i, ])
+  # Ytrain[i] <- which.max(Ptrain[i,])
+  
+}
+
+for (i in 1:ntest) {
+  Ytest[i] <- sample(x = 0:(K - 1),
+                     size = 1,
+                     prob = Ptest[i, ])
+  # Ytest[i] <- which.max(Ptest[i,])
+}
+
+# Does sd of random initialization matter?
+beta_init = matrix(rnorm((p + 1) * K, mean = 0, sd = 1), nrow = p + 1) 
+out <- LRMultiClass2(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init)
+
+library(testthat)
+
+test_that("Expect errors/warnings in mismatched dimensions", 
+          {
+            expect_error(LRMultiClass(Xtrain, Ytrain, Xtest[-1,], Ytest, beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain, Ytrain, Xtest, Ytest[-1], beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain, Ytrain, Xtest[,-1], Ytest, beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain, Ytrain, Xtest[,-2], Ytest, beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain, Ytrain[-1], Xtest, Ytest, beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain[-1,], Ytrain, Xtest, Ytest, beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain[,-1], Ytrain, Xtest, Ytest, beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain[,-2], Ytrain, Xtest, Ytest, beta_init = beta_init))
+            expect_error(LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init[-1,]))
+            
+            # Function is able to run if column dimension of beta_init doesn't match implied number
+            # of classes within Ytrain. I gave a warning if this happens.
+            expect_warning(LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init[,-1])) 
+          })
+
