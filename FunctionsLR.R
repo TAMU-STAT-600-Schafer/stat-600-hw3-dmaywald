@@ -65,7 +65,7 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
     
     K <- ncol(beta_init)
     if (length(unique(y)) != K) {
-      K <- max(K, length(unique(y)))
+      K <- min(K, length(unique(y)))
       warning("Number of unique classifications found in y does not match the column dimension of supplied beta_init")
     }
   }
@@ -79,65 +79,59 @@ LRMultiClass <- function(X, y, Xt, yt, numIter = 50, eta = 0.1, lambda = 1, beta
   
   # Check if numIter > 0. If not, return output without any iteration
   if(!(numIter>0)){
-    if(!is.null(beta_init)){
-      warning("Supplied numIter is not greater than 0. Function LRMultiClass() is returning output with no iterative solution.")
-      expXB <- exp(crossprod(t(X), beta_init))
-      Pk <- expXB / rowSums(expXB)
-      # logPk <- log(Pk)
-      
-      # Calculate double sum found in the objective function
-      temp <- 0
-      for (i in 1:K) {
-        temp <- temp + sum(log(Pk[y == (i-1), i]))
-      }
-      
-      
-      # initialize objective vector with repeated initial objective function evaluation
-      # note that the frobenius norm of beta is equivalent to the double sum
-      objective <- c(-1 * temp + (lambda / 2) * norm(beta_init, "F") ^ 2)
-      
-      
-      
-      # Needed for quickly calculating train accuracy and test accuracy
-      ntrain = nrow(X)
-      ntest = nrow(Xt)
-      
-      
-      # Get training accuracy by calculating mean of indicator function I(pred == y)
-      # where pred is row wise maximum of expXB
-      # would it be faster to apply which.max to rows of expXB
-      # or would it be faster to for loop?
-      trainAcc <- 0
-      for (n in 1:ntrain) {
-        if (which.max(Pk[n, ])-1 == y[n]) {
-          trainAcc <- trainAcc + 1
-        }
-      }
-      error_train <- c(1 - trainAcc / ntrain)
-      
-      # Apply was slower
-      # error_train <- rep(1 - mean(apply(expXB, 1, function(x) which.max(x))-1 == y), numIter+1)
-      
-      
-      # Get testing accuracy by calculating mean of indicator function I(pred == yt)
-      # where pred is row wise maximum of Xt %*% beta_init
-      # would it be faster to apply which.max to rows of expXB
-      # or would it be faster to for loop?
-      XtestBeta <- crossprod(t(Xt), beta_init)
-      testAcc <- 0
-      for (n in 1:ntest) {
-        if (which.max(XtestBeta[n, ])-1 == yt[n]) {
-          testAcc <- testAcc + 1
-        }
-      }
-      
-      error_test <- c(1 - testAcc / ntest)
-      return(list(beta = beta_init, error_train = 100*error_train, error_test = 100*error_test, objective =  objective))
+    warning("Supplied numIter is not greater than 0. Function LRMultiClass() is returning output with no iterative solution. If no beta_init was supplied by user, then a matrix of 0 will be returned")
+    expXB <- exp(crossprod(t(X), beta_init))
+    Pk <- expXB / rowSums(expXB)
+    # logPk <- log(Pk)
+    
+    # Calculate double sum found in the objective function
+    temp <- 0
+    for (i in 1:K) {
+      temp <- temp + sum(log(Pk[y == (i-1), i]))
     }
-    if(is.null(beta_init)){
-      warning("Supplied numIter is not greater than 0 and no beta_init was given. Function LRMultiClass() is returning NULL")
-      return(list(beta = NULL, error_train = NULL, error_test = NULL, objective =  NULL))
+    
+    
+    # initialize objective vector with repeated initial objective function evaluation
+    # note that the frobenius norm of beta is equivalent to the double sum
+    objective <- c(-1 * temp + (lambda / 2) * norm(beta_init, "F") ^ 2)
+    
+    
+    
+    # Needed for quickly calculating train accuracy and test accuracy
+    ntrain = nrow(X)
+    ntest = nrow(Xt)
+    
+    
+    # Get training accuracy by calculating mean of indicator function I(pred == y)
+    # where pred is row wise maximum of expXB
+    # would it be faster to apply which.max to rows of expXB
+    # or would it be faster to for loop?
+    trainAcc <- 0
+    for (n in 1:ntrain) {
+      if (which.max(Pk[n, ])-1 == y[n]) {
+        trainAcc <- trainAcc + 1
+      }
     }
+    error_train <- c(1 - trainAcc / ntrain)
+    
+    # Apply was slower
+    # error_train <- rep(1 - mean(apply(expXB, 1, function(x) which.max(x))-1 == y), numIter+1)
+    
+    
+    # Get testing accuracy by calculating mean of indicator function I(pred == yt)
+    # where pred is row wise maximum of Xt %*% beta_init
+    # would it be faster to apply which.max to rows of expXB
+    # or would it be faster to for loop?
+    XtestBeta <- crossprod(t(Xt), beta_init)
+    testAcc <- 0
+    for (n in 1:ntest) {
+      if (which.max(XtestBeta[n, ])-1 == yt[n]) {
+        testAcc <- testAcc + 1
+      }
+    }
+    
+    error_test <- c(1 - testAcc / ntest)
+    return(list(beta = beta_init, error_train = 100*error_train, error_test = 100*error_test, objective =  objective))
   }
   
   

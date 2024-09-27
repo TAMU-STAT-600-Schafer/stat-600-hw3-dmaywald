@@ -345,5 +345,8 @@ for (i in 1:ntest) {
 # Does sd of random initialization matter?
 beta_init = matrix(rnorm((p + 1) * K, mean = 0, sd = 1), nrow = p + 1) 
 out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init, numIter = 1)
-out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init, numIter = 0)
-out <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, numIter = 0)
+
+test_that("Checking numIter inputs"){
+  expect_warning(out0 <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, beta_init = beta_init, numIter = 0))
+  expect_warning(outNoInit <- LRMultiClass(Xtrain, Ytrain, Xtest, Ytest, numIter = 0))
+}
